@@ -7,7 +7,7 @@ browser page — no cloud account UI required.
 
 ![tabs](https://img.shields.io/badge/tabs-10-orange) ![api](https://img.shields.io/badge/API%20operations-63-green)
 
-![Dashboard screenshot](docs/dashboard.png)
+![Dashboard screenshot](dashboard.png)
 
 ---
 
