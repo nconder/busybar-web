@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BUSY Bar — Mission Control</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">▚▞</span>
+    <h1>BUSY Bar <span class="accent">Mission Control</span></h1>
+  </div>
+  <div class="topbar-right">
+    <div id="conn-pill" class="pill pill-warn" title="Cloud API connectivity">connecting…</div>
+    <button id="token-btn" class="btn btn-ghost" title="Configure API token">🔑 Token</button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-tab="dashboard">📊 Dashboard</button>
+  <button class="tab" data-tab="display">🖥️ Display & Audio</button>
+  <button class="tab" data-tab="timer">⏱️ BUSY Timer</button>
+  <button class="tab" data-tab="storage">🗄️ Storage & Assets</button>
+  <button class="tab" data-tab="connectivity">📡 Connectivity</button>
+  <button class="tab" data-tab="smarthome">🏠 Smart Home</button>
+  <button class="tab" data-tab="system">⚙️ System & Time</button>
+  <button class="tab" data-tab="update">⬆️ Firmware</button>
+  <button class="tab" data-tab="playground">🧪 API Playground</button>
+  <button class="tab" data-tab="help">❓ Help</button>
+</nav>
+
+<main>
+  <!-- ============================= DASHBOARD ============================= -->
+  <section id="tab-dashboard" class="tab-pane active">
+    <div class="grid cols-2">
+      <div class="card span-2">
+        <div class="card-head">
+          <h2>Live Screens</h2>
+          <div>
+            <label class="chk"><input type="checkbox" id="live-screen-toggle" checked> live refresh</label>
+            <button class="btn btn-ghost" id="refresh-screens">↻ Snapshot</button>
+          </div>
+        </div>
+        <div class="screens">
+          <figure><canvas id="screen-front" width="72" height="16"></canvas><figcaption>Front (72×16)</figcaption></figure>
+          <figure><canvas id="screen-back" width="160" height="80"></canvas><figcaption>Back (160×80, mono)</figcaption></figure>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Power</h2><button class="btn btn-ghost" data-refresh="power">↻</button></div>
+        <div id="power-body" class="kv"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Device</h2><button class="btn btn-ghost" data-refresh="device">↻</button></div>
+        <div id="device-body" class="kv"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>System</h2><button class="btn btn-ghost" data-refresh="system">↻</button></div>
+        <div id="system-body" class="kv"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Network</h2><button class="btn btn-ghost" data-refresh="network">↻</button></div>
+        <div id="network-body" class="kv"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>BUSY Timer</h2><button class="btn btn-ghost" data-refresh="busy">↻</button></div>
+        <div id="busy-body" class="kv"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Account / MQTT</h2><button class="btn btn-ghost" data-refresh="account">↻</button></div>
+        <div id="account-body" class="kv"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================== DISPLAY & AUDIO ========================== -->
+  <section id="tab-display" class="tab-pane">
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-head"><h2>Draw on Display</h2></div>
+        <div class="form">
+          <label>App ID <input id="draw-app" value="mission_control" pattern="[a-zA-Z0-9._-]+"></label>
+          <label>Priority <input id="draw-priority" type="number" min="1" max="100" value="50"></label>
+          <label>LED notify color <input id="draw-led" type="color" value="#ff0000" title="#RRGGBB (alpha FF)"></label>
+          <label>Display target
+            <select id="draw-display"><option value="front">front</option><option value="back">back</option></select>
+          </label>
+        </div>
+        <div class="btn-row wrap">
+          <button class="btn" data-draw="hello">Hello text</button>
+          <button class="btn" data-draw="countdown">Countdown</button>
+          <button class="btn" data-draw="rects">Rectangles</button>
+          <button class="btn" data-draw="stock">Stock image</button>
+          <button class="btn" data-draw="alert">⚠ Alert card</button>
+        </div>
+        <details class="adv">
+          <summary>Custom JSON payload</summary>
+          <textarea id="draw-json" rows="10" spellcheck="false"></textarea>
+          <button class="btn" id="draw-custom">Send custom draw</button>
+        </details>
+        <div class="btn-row">
+          <button class="btn btn-danger" id="draw-clear">Clear display (this app)</button>
+          <button class="btn btn-danger" id="draw-clear-all">Clear all</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Audio</h2></div>
+        <div class="form">
+          <label>App ID <input id="audio-app" value="mission_control"></label>
+          <label>Asset path (uploaded) <input id="audio-path" placeholder="data.snd"></label>
+          <label>Stock path <input id="audio-stock" placeholder="shared/..."></label>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="audio-play">▶ Play</button>
+          <button class="btn btn-danger" id="audio-stop">■ Stop</button>
+        </div>
+        <hr>
+        <div class="form">
+          <label>Volume <span id="volume-val">–</span>
+            <input id="volume-slider" type="range" min="0" max="100" value="50">
+          </label>
+          <label class="chk"><input type="checkbox" id="volume-silent" checked> silent change</label>
+        </div>
+        <hr>
+        <div class="form">
+          <label>Brightness
+            <select id="brightness">
+              <option value="auto">auto</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Remote Input</h2></div>
+        <p class="muted">Send virtual key presses to the device.</p>
+        <div class="pad">
+          <span></span><button class="btn key" data-key="up">▲</button><span></span>
+          <button class="btn key" data-key="back">← back</button>
+          <button class="btn key" data-key="ok">OK</button>
+          <button class="btn key" data-key="start">start →</button>
+          <span></span><button class="btn key" data-key="down">▼</button><span></span>
+        </div>
+        <div class="btn-row wrap">
+          <button class="btn key" data-key="busy">busy</button>
+          <button class="btn key" data-key="custom">custom</button>
+          <button class="btn key" data-key="apps">apps</button>
+          <button class="btn key" data-key="settings">settings</button>
+          <button class="btn key btn-danger" data-key="off">off</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= BUSY TIMER ============================ -->
+  <section id="tab-timer" class="tab-pane">
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-head"><h2>Timer Snapshot</h2><button class="btn btn-ghost" data-refresh="busy">↻</button></div>
+        <div id="timer-snapshot" class="kv"></div>
+        <div class="btn-row">
+          <button class="btn" id="timer-pause">⏸ Pause</button>
+          <button class="btn" id="timer-resume">▶ Resume</button>
+          <button class="btn btn-danger" id="timer-stop">■ Stop</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Start New Session</h2></div>
+        <div class="form">
+          <label>Slot
+            <select id="timer-slot"><option value="busy">busy</option><option value="custom">custom</option></select>
+          </label>
+          <label>Type
+            <select id="timer-type">
+              <option value="SIMPLE">Simple (countdown)</option>
+              <option value="INTERVAL">Interval (Pomodoro)</option>
+              <option value="INFINITE">Infinite</option>
+            </select>
+          </label>
+          <div id="timer-simple-fields">
+            <label>Total minutes <input id="timer-total-min" type="number" value="25" min="1"></label>
+          </div>
+          <div id="timer-interval-fields" class="hidden">
+            <label>Work (min) <input id="timer-work-min" type="number" value="25" min="1"></label>
+            <label>Rest (min) <input id="timer-rest-min" type="number" value="5" min="1"></label>
+            <label>Cycles <input id="timer-cycles" type="number" value="4" min="1"></label>
+            <label class="chk"><input type="checkbox" id="timer-autostart"> autostart next cycle</label>
+          </div>
+          <label>Theme <input id="timer-theme" value="busy"></label>
+          <label class="chk"><input type="checkbox" id="timer-work-only"> show work phase only</label>
+          <label class="chk"><input type="checkbox" id="timer-smart" checked> trigger smart home</label>
+        </div>
+        <button class="btn btn-primary" id="timer-start">▶ Start session</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Profile: BUSY</h2><button class="btn btn-ghost" data-refresh="profile-busy">↻</button></div>
+        <textarea id="profile-busy-json" rows="9" spellcheck="false"></textarea>
+        <button class="btn" id="profile-busy-save">Save profile</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Profile: CUSTOM</h2><button class="btn btn-ghost" data-refresh="profile-custom">↻</button></div>
+        <textarea id="profile-custom-json" rows="9" spellcheck="false"></textarea>
+        <button class="btn" id="profile-custom-save">Save profile</button>
+      </div>
+
+      <div class="card span-2" id="custom-card">
+        <div class="card-head"><h2>Custom mode ("ZEN") — quick control</h2><span class="muted">slot: custom</span></div>
+        <p class="muted">The custom slot runs your ZEN profile. ⚠️ <strong>"Show work phase only" + INFINITE
+        blanks the screen</strong> — with no work/rest phases there is no "work" to show, so the display goes
+        dark on start/transitions. Keep it off for INFINITE, or switch the profile to INTERVAL.</p>
+        <div class="form">
+          <label>Theme <input id="custom-theme" value="on_air"></label>
+          <label class="chk"><input type="checkbox" id="custom-work-only"> show work phase only <span class="muted">(blanks screen on INFINITE)</span></label>
+          <label class="chk"><input type="checkbox" id="custom-smart"> trigger smart home</label>
+        </div>
+        <div class="btn-row wrap">
+          <button class="btn btn-primary" id="custom-start">▶ Start ZEN session</button>
+          <button class="btn" id="custom-pause">⏸ Pause</button>
+          <button class="btn" id="custom-resume">▶ Resume</button>
+          <button class="btn btn-danger" id="custom-stop">■ Stop</button>
+          <button class="btn" id="custom-open-app">📺 Open CUSTOM app on device</button>
+        </div>
+        <div id="custom-state" class="kv"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================= STORAGE & ASSETS ========================== -->
+  <section id="tab-storage" class="tab-pane">
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-head"><h2>File Browser</h2><button class="btn btn-ghost" data-refresh="storage">↻</button></div>
+        <div id="storage-usage" class="kv"></div>
+        <div class="crumbs" id="storage-crumbs"></div>
+        <table class="tbl" id="storage-table">
+          <thead><tr><th>Name</th><th>Size</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="form inline">
+          <input id="mkdir-name" placeholder="new folder name">
+          <button class="btn" id="mkdir-btn">mkdir</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Upload</h2></div>
+        <div class="form">
+          <label>Destination dir <input id="upload-dir" value="/ext/user_assets"></label>
+          <label>File <input id="upload-file" type="file"></label>
+        </div>
+        <button class="btn" id="upload-btn">⬆ Upload to storage</button>
+        <hr>
+        <h3>Upload as app asset</h3>
+        <div class="form">
+          <label>App ID <input id="asset-app" value="mission_control"></label>
+        </div>
+        <button class="btn" id="asset-upload-btn">⬆ Upload asset (uses file picker above)</button>
+        <button class="btn btn-danger" id="asset-delete-btn">🗑 Delete ALL assets of this app</button>
+        <hr>
+        <h3>Rename / move</h3>
+        <div class="form">
+          <label>Old path <input id="rename-old" placeholder="/ext/user_assets/a.png"></label>
+          <label>New path <input id="rename-new" placeholder="/ext/user_assets/b.png"></label>
+        </div>
+        <button class="btn" id="rename-btn">Rename</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== CONNECTIVITY ============================ -->
+  <section id="tab-connectivity" class="tab-pane">
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-head"><h2>Wi-Fi</h2><button class="btn btn-ghost" data-refresh="wifi">↻</button></div>
+        <div id="wifi-body" class="kv"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Transport</h2><button class="btn btn-ghost" data-refresh="transport">↻</button></div>
+        <div id="transport-body" class="kv"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Bluetooth LE</h2><button class="btn btn-ghost" data-refresh="ble">↻</button></div>
+        <div id="ble-body" class="kv"></div>
+        <div class="btn-row">
+          <button class="btn" id="ble-enable">Enable</button>
+          <button class="btn" id="ble-disable">Disable</button>
+          <button class="btn btn-danger" id="ble-unpair">Remove pairing</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>HTTP API access over Wi-Fi</h2><button class="btn btn-ghost" data-refresh="access">↻</button></div>
+        <div id="access-body" class="kv"></div>
+        <div class="form">
+          <label>Mode
+            <select id="access-mode">
+              <option value="disabled">disabled</option>
+              <option value="enabled">enabled</option>
+              <option value="key">key</option>
+            </select>
+          </label>
+          <label>Key (4-10 digits) <input id="access-key" placeholder="1234"></label>
+        </div>
+        <button class="btn" id="access-save">Apply</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>MQTT backend</h2><button class="btn btn-ghost" data-refresh="mqtt">↻</button></div>
+        <div id="mqtt-body" class="kv"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ SMART HOME ============================= -->
+  <section id="tab-smarthome" class="tab-pane">
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-head"><h2>Matter Pairing</h2><button class="btn btn-ghost" data-refresh="sh-pairing">↻</button></div>
+        <div id="sh-pairing-body" class="kv"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="sh-start-pairing">Start commissioning</button>
+          <button class="btn btn-danger" id="sh-erase">Erase all fabrics</button>
+        </div>
+        <div id="sh-payload" class="hidden">
+          <div class="qr-wrap"><div id="sh-qr"></div></div>
+          <div class="kv" id="sh-payload-kv"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Emulated Switch</h2><button class="btn btn-ghost" data-refresh="sh-switch">↻</button></div>
+        <div class="switch-row">
+          <label class="switch">
+            <input type="checkbox" id="sh-switch-toggle">
+            <span class="slider"></span>
+          </label>
+          <span id="sh-switch-label">–</span>
+        </div>
+        <div class="form">
+          <label>Startup behavior
+            <select id="sh-startup">
+              <option value="">(unchanged)</option>
+              <option value="off">off</option>
+              <option value="on">on</option>
+              <option value="toggle">toggle</option>
+              <option value="last">last</option>
+            </select>
+          </label>
+        </div>
+        <button class="btn" id="sh-startup-save">Set startup behavior</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================== SYSTEM & TIME ============================ -->
+  <section id="tab-system" class="tab-pane">
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-head"><h2>Device Name</h2></div>
+        <div class="form inline">
+          <input id="device-name" maxlength="20">
+          <button class="btn" id="name-save">Save</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Clock</h2><button class="btn btn-ghost" data-refresh="time">↻</button></div>
+        <div id="time-body" class="kv"></div>
+        <div class="btn-row">
+          <button class="btn" id="time-sync">Sync from browser</button>
+        </div>
+        <div class="form">
+          <label>Timezone <select id="tz-select"></select></label>
+        </div>
+        <button class="btn" id="tz-save">Set timezone</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Firmware info</h2><button class="btn btn-ghost" data-refresh="firmware">↻</button></div>
+        <div id="firmware-body" class="kv"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Log dump</h2></div>
+        <div class="form inline">
+          <input id="logdump-name" placeholder="filename (optional)">
+          <button class="btn" id="logdump-btn">Dump log</button>
+        </div>
+        <div id="logdump-result" class="kv"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================= FIRMWARE ============================== -->
+  <section id="tab-update" class="tab-pane">
+    <div class="grid cols-2">
+      <div class="card">
+        <div class="card-head"><h2>Update status</h2><button class="btn btn-ghost" data-refresh="update">↻</button></div>
+        <div id="update-body" class="kv"></div>
+        <div class="progress hidden" id="update-progress-wrap">
+          <div class="progress-bar" id="update-progress"></div>
+        </div>
+        <div class="btn-row wrap">
+          <button class="btn" id="update-check">Check for updates</button>
+          <button class="btn btn-primary" id="update-install">Install</button>
+          <button class="btn btn-danger" id="update-abort">Abort download</button>
+        </div>
+        <div class="form inline">
+          <input id="changelog-version" placeholder="version e.g. 1.1.0">
+          <button class="btn" id="changelog-btn">Changelog</button>
+        </div>
+        <pre id="changelog-out" class="code"></pre>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Auto-update</h2><button class="btn btn-ghost" data-refresh="autoupdate">↻</button></div>
+        <div class="form">
+          <label class="chk"><input type="checkbox" id="au-enabled"> enabled</label>
+          <label>Window start <input id="au-start" type="time" value="02:00"></label>
+          <label>Window end <input id="au-end" type="time" value="05:00"></label>
+        </div>
+        <button class="btn" id="au-save">Save auto-update</button>
+        <hr>
+        <h3>Manual firmware flash</h3>
+        <p class="muted">Upload a firmware TAR file directly to the device.</p>
+        <div class="form">
+          <label>Firmware .tar <input id="fw-file" type="file" accept=".tar"></label>
+        </div>
+        <button class="btn btn-danger" id="fw-flash">⚠ Flash firmware</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== PLAYGROUND ============================== -->
+  <section id="tab-playground" class="tab-pane">
+    <div class="card">
+      <div class="card-head"><h2>API Playground</h2><span class="muted">calls every documented endpoint</span></div>
+      <div class="form inline playground-bar">
+        <select id="pg-method">
+          <option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option>
+        </select>
+        <input id="pg-path" list="pg-endpoints" placeholder="/busybar/version">
+        <datalist id="pg-endpoints"></datalist>
+        <button class="btn btn-primary" id="pg-send">Send</button>
+      </div>
+      <div class="form">
+        <label>Query params <input id="pg-params" placeholder='{"display":"0"}'></label>
+        <label>JSON body <textarea id="pg-body" rows="6" spellcheck="false" placeholder='{"key":"value"}'></textarea></label>
+      </div>
+      <div class="resp-bar">Response <span id="pg-status" class="pill"></span><span id="pg-time" class="muted"></span></div>
+      <pre id="pg-response" class="code tall"></pre>
+    </div>
+  </section>
+  <!-- =============================== HELP ================================ -->
+  <section id="tab-help" class="tab-pane">
+    <div class="help-layout">
+      <aside class="help-nav card" id="help-nav">
+        <h3>Contents</h3>
+        <a href="#help-quickstart" class="help-link">🚀 Quick start</a>
+        <a href="#help-token" class="help-link">🔑 API token</a>
+        <a href="#help-dashboard" class="help-link">📊 Dashboard</a>
+        <a href="#help-display" class="help-link">🖥️ Display & Audio</a>
+        <a href="#help-timer" class="help-link">⏱️ BUSY Timer</a>
+        <a href="#help-storage" class="help-link">🗄️ Storage & Assets</a>
+        <a href="#help-connectivity" class="help-link">📡 Connectivity</a>
+        <a href="#help-smarthome" class="help-link">🏠 Smart Home</a>
+        <a href="#help-system" class="help-link">⚙️ System & Time</a>
+        <a href="#help-firmware" class="help-link">⬆️ Firmware</a>
+        <a href="#help-playground" class="help-link">🧪 API Playground</a>
+        <a href="#help-screens" class="help-link">🖼️ Screen format</a>
+        <a href="#help-troubleshooting" class="help-link">🩹 Troubleshooting</a>
+        <a href="#help-faq" class="help-link">💬 FAQ</a>
+        <a href="#help-apiref" class="help-link">📚 API reference</a>
+      </aside>
+
+      <div class="help-body">
+
+        <div class="card help-doc" id="help-quickstart">
+          <h2>🚀 Quick start</h2>
+          <p>Mission Control is a local web console for your <strong>BUSY Bar</strong> — it talks to the
+          device through the BUSY Cloud HTTP API (<code>https://api.busy.app/busybar</code>) so you can drive
+          every feature from one browser page: live screen mirrors, drawing, audio, the Pomodoro-style
+          BUSY timer, the file system, Wi-Fi/BLE, Matter smart-home pairing, clock, and firmware updates.</p>
+          <h3>Start the app</h3>
+          <pre class="code">cd busybar-web
+python app.py
+# then open http://127.0.0.1:8931</pre>
+          <h3>Requirements</h3>
+          <ul>
+            <li>Python 3.10+ with <code>flask</code> and <code>requests</code> (<code>pip install flask requests</code>)</li>
+            <li>A BUSY Bar linked to your BUSY account, powered on, with internet access (USB or Wi-Fi)</li>
+            <li>A BAR-scope API token (see <a href="#help-token">API token</a>)</li>
+          </ul>
+          <h3>How it works</h3>
+          <p>The browser never talks to the cloud directly. A tiny Flask proxy (<code>app.py</code>) holds your
+          token, forwards each request to <code>api.busy.app</code>, and returns the response — this avoids CORS
+          problems and keeps the token out of the page source. Every tab calls local <code>/api/…</code> routes
+          that map 1:1 onto the documented cloud endpoints.</p>
+          <p class="muted">The green pill in the top bar shows the live cloud API version when the device is
+          reachable; it turns red if the device or token is unreachable.</p>
+        </div>
+
+        <div class="card help-doc" id="help-token">
+          <h2>🔑 API token</h2>
+          <p>All cloud calls authenticate with an HTTP <strong>Bearer</strong> token
+          (<code>Authorization: Bearer &lt;token&gt;</code>).</p>
+          <h3>Where to get one</h3>
+          <ol>
+            <li>Open the BUSY mobile/desktop app → <em>Settings → Development → API tokens</em>.</li>
+            <li>Create a <strong>BAR-scope</strong> token and copy it.</li>
+          </ol>
+          <h3>How Mission Control uses it</h3>
+          <ul>
+            <li>A token is pre-configured in <code>app.py</code> (<code>DEFAULT_TOKEN</code>) so the app works out of the box.</li>
+            <li>Click <strong>🔑 Token</strong> in the top bar to paste a different token at runtime — it is stored
+            only in the local proxy process memory, never written to disk or sent anywhere except
+            <code>api.busy.app</code>.</li>
+            <li>The dialog shows whether you're using the default or a custom token, plus a masked hint.</li>
+          </ul>
+          <h3>Security notes</h3>
+          <ul>
+            <li>Treat the token like a password — anyone holding it can fully control your device (rename it,
+            flash firmware, erase files, erase Matter fabrics).</li>
+            <li>Don't commit <code>app.py</code> with a real token to a public repo; rotate the token if it leaks.</li>
+            <li>Because the proxy binds to <code>127.0.0.1</code>, the token is only usable from your own machine.</li>
+          </ul>
+        </div>
+
+        <div class="card help-doc" id="help-dashboard">
+          <h2>📊 Dashboard</h2>
+          <p>The landing tab — a live overview of the whole device, auto-refreshing.</p>
+          <h3>Live Screens</h3>
+          <ul>
+            <li><strong>Front (72×16, color)</strong> and <strong>Back (160×80, mono)</strong> canvases mirror what the
+            physical displays currently show, refreshed every 2&nbsp;s while "live refresh" is ticked.</li>
+            <li><strong>↻ Snapshot</strong> grabs a single frame on demand.</li>
+            <li>Frames are fetched via <code>GET /busybar/screen</code> and decoded in the browser — see
+            <a href="#help-screens">Screen format</a>.</li>
+          </ul>
+          <h3>Telemetry cards</h3>
+          <table class="tbl">
+            <tr><th>Card</th><th>Source endpoint</th><th>Shows</th></tr>
+            <tr><td>Power</td><td><code>GET /status/power</code></td><td>charge state, battery %, voltages, current</td></tr>
+            <tr><td>Device</td><td><code>GET /status/device</code></td><td>serial, model, MACs, firmware security</td></tr>
+            <tr><td>System</td><td><code>GET /status/system</code></td><td>API version, uptime, boot time, auto-update flag</td></tr>
+            <tr><td>Network</td><td><code>GET /wifi/status</code> + <code>GET /transport</code></td><td>Wi-Fi state/SSID/RSSI/IP, active transport</td></tr>
+            <tr><td>BUSY Timer</td><td><code>GET /busy/snapshot</code></td><td>timer state, time left, theme</td></tr>
+            <tr><td>Account / MQTT</td><td><code>GET /account/info|status|backend</code></td><td>link state, email, MQTT status, broker config</td></tr>
+          </table>
+          <p class="muted">Every card has its own ↻ button; power and timer auto-refresh every 15&nbsp;s.</p>
+        </div>
+
+        <div class="card help-doc" id="help-display">
+          <h2>🖥️ Display & Audio</h2>
+          <h3>Draw on Display</h3>
+          <p>Sends <code>POST /display/draw</code> with an <em>App ID</em> (groups your elements/assets), a
+          <em>priority</em> (1–100; must be ≥ the on-screen app's priority — system apps are 10, an active
+          work session is 90), an optional blinking <em>LED color</em>, and a target display (front/back).</p>
+          <h3>Presets</h3>
+          <table class="tbl">
+            <tr><th>Preset</th><th>What it draws</th></tr>
+            <tr><td>Hello text</td><td>scrolling text banner</td></tr>
+            <tr><td>Countdown</td><td>5-minute countdown element + green LED</td></tr>
+            <tr><td>Rectangles</td><td>gradient rectangle + label</td></tr>
+            <tr><td>Stock image</td><td>built-in <code>shared/logo.png</code> + caption</td></tr>
+            <tr><td>⚠ Alert card</td><td>priority-95 red alert + blinking LED (preempts a running session)</td></tr>
+          </table>
+          <p>Each preset also fills the <em>Custom JSON</em> editor so you can tweak and resend — element types:
+          <code>text</code>, <code>image</code>, <code>animation</code>, <code>countdown</code>, <code>rectangle</code>.</p>
+          <p><strong>Clear display</strong> (<code>DELETE /display/draw</code>) removes your app's elements — or all
+          apps' elements with "Clear all".</p>
+          <h3>Audio</h3>
+          <ul>
+            <li><strong>Play</strong> (<code>POST /audio/play</code>) — plays an uploaded asset path (<code>data.snd</code>)
+            or a stock sound (<code>shared/…</code>); <strong>Stop</strong> halts playback.</li>
+            <li><strong>Volume</strong> slider (<code>POST /audio/volume</code>) — 0–100; "silent change" suppresses the
+            confirmation beep.</li>
+            <li><strong>Brightness</strong> (<code>POST /display/brightness</code>) — 0–100 or <code>auto</code> (ambient sensor).</li>
+          </ul>
+          <h3>Remote Input</h3>
+          <p>Virtual button presses (<code>POST /input?key=…</code>): <code>up, down, ok, back, start, busy, custom,
+          off, apps, settings</code> — same as pressing the physical keys.</p>
+        </div>
+
+        <div class="card help-doc" id="help-timer">
+          <h2>⏱️ BUSY Timer</h2>
+          <p>Controls the built-in focus timer. Two slots exist: <code>busy</code> (the standard profile) and
+          <code>custom</code> (your secondary profile, titled "ZEN" on this device).</p>
+          <h3>Timer snapshot</h3>
+          <p>Shows the live state from <code>GET /busy/snapshot</code>: <code>NOT_STARTED</code>, <code>SIMPLE</code>
+          (time left), <code>INFINITE</code>, or <code>INTERVAL</code> (current cycle, phase time left/total, pause state).</p>
+          <ul>
+            <li><strong>⏸ Pause / ▶ Resume</strong> — re-PUTs the snapshot with <code>is_paused</code> flipped.</li>
+            <li><strong>■ Stop</strong> — writes a <code>NOT_STARTED</code> snapshot (keeps theme settings).</li>
+          </ul>
+          <h3>Start New Session</h3>
+          <p>One click updates the slot's profile (<code>PUT /busy/profiles/{slot}</code>) then pushes a fresh
+          snapshot — i.e. starts the timer.</p>
+          <p>On a <strong>fresh start</strong> (no session running) the app also sends a remote <code>ok</code>
+          key press so the on-device CUSTOM/BUSY app foregrounds its active timer screen — the firmware only
+          switches to that view on a physical OK press. On a <strong>re-start while a session is already
+          running</strong> the nudge is skipped on purpose: in that state OK acts as a session control in the
+          device UI and can reset/blank the timer view. The timer backend itself always (re)starts correctly
+          regardless.</p>
+          <ul>
+            <li><strong>Simple</strong> — single countdown of N minutes.</li>
+            <li><strong>Interval</strong> — Pomodoro: work minutes × cycles with rest minutes between, optional autostart.</li>
+            <li><strong>Infinite</strong> — runs until stopped.</li>
+            <li><strong>Theme</strong> — display theme (<code>busy</code>, <code>on_air</code>, …); "show work phase only"
+            hides rest phases; "trigger smart home" flips the emulated switch with session state.</li>
+          </ul>
+          <p><strong>⚠ "Show work phase only" + INFINITE = blank screen.</strong> The flag hides everything that
+          isn't a work phase — and an INFINITE timer has no work/rest phases, so the display goes dark right at
+          start (and on any state transition). It only makes sense with INTERVAL profiles. The Custom quick
+          controls below force it off when the profile is INFINITE.</p>
+          <h3>Custom mode ("ZEN") quick controls</h3>
+          <p>A dedicated card for the <code>custom</code> slot: start the ZEN profile with its own
+          <strong>theme / show-work-phase-only / trigger-smart-home</strong> settings (loaded from the live
+          profile), pause/resume/stop, a state readout, and "Open CUSTOM app on device" (sends the
+          <code>custom</code> key so the bar's screen shows the CUSTOM app).</p>
+          <h3>Profile editors</h3>
+          <p>Raw JSON of each profile — edit <code>title</code>, <code>timer_settings</code>,
+          <code>busy_bar_settings</code> and <em>Save profile</em>. The app refreshes
+          <code>profile_timestamp_ms</code> automatically on save (the device uses it for sync conflict resolution).</p>
+        </div>
+
+        <div class="card help-doc" id="help-storage">
+          <h2>🗄️ Storage & Assets</h2>
+          <h3>File browser</h3>
+          <p>Browses the device's internal flash (<code>/ext</code>) via <code>GET /storage/list</code>. Click a
+          folder to enter it, use breadcrumbs to jump back. Files can be <strong>downloaded</strong>
+          (<code>GET /storage/read</code>) or <strong>deleted</strong> (<code>DELETE /storage/remove</code>).
+          The usage bar comes from <code>GET /storage/status</code>. Create folders with <em>mkdir</em>
+          (<code>POST /storage/mkdir</code>).</p>
+          <h3>Upload</h3>
+          <ul>
+            <li><strong>Upload to storage</strong> (<code>POST /storage/write</code>) — any file to any
+            <code>/ext/…</code> path, e.g. images/animations/sounds for your apps (<code>/ext/user_assets</code>).</li>
+            <li><strong>Upload as app asset</strong> (<code>POST /assets/upload</code>) — attaches the file to an
+            App ID so <code>display/draw</code> and <code>audio/play</code> can reference it by name
+            (<code>path: "data.png"</code>).</li>
+            <li><strong>Delete ALL assets</strong> (<code>DELETE /assets/upload</code>) — wipes every asset of one App ID.</li>
+            <li><strong>Rename / move</strong> (<code>POST /storage/rename</code>) — old path → new path.</li>
+          </ul>
+          <p class="muted">Paths must match <code>^/ext(/[a-zA-Z0-9._-]*)*$</code>; asset/app names
+          <code>^[a-zA-Z0-9._-]+$</code>.</p>
+        </div>
+
+        <div class="card help-doc" id="help-connectivity">
+          <h2>📡 Connectivity</h2>
+          <ul>
+            <li><strong>Wi-Fi</strong> (<code>GET /wifi/status</code>) — state, SSID, BSSID, channel, RSSI, security,
+            IP config. Fields only appear when connected.</li>
+            <li><strong>Transport</strong> (<code>GET /transport</code>) — how the device currently talks to the cloud:
+            <code>usb</code> or <code>wifi</code>.</li>
+            <li><strong>Bluetooth LE</strong> — status (<code>GET /ble/status</code>: reset / initialization / disabled /
+            enabled / connectable / connected), plus <strong>Enable</strong>, <strong>Disable</strong>, and
+            <strong>Remove pairing</strong> (<code>DELETE /ble/pairing</code>) to forget the bonded phone.</li>
+            <li><strong>HTTP API access over Wi-Fi</strong> (<code>GET/POST /access</code>) — controls the device's
+            <em>local</em> HTTP API on your LAN: <code>disabled</code>, <code>enabled</code> (open), or
+            <code>key</code> (requires a 4–10 digit PIN). This is independent of the cloud API this app uses.</li>
+            <li><strong>MQTT backend</strong> (<code>GET /account/backend</code>) — broker URL, client-cert type,
+            whether the server cert is ignored. Default = BUSY Cloud.</li>
+          </ul>
+        </div>
+
+        <div class="card help-doc" id="help-smarthome">
+          <h2>🏠 Smart Home</h2>
+          <p>The BUSY Bar is a <strong>Matter</strong> device — it can join Apple Home, Google Home, Alexa,
+          Home Assistant, etc., exposing an on/off switch that mirrors your focus session.</p>
+          <h3>Matter Pairing</h3>
+          <ol>
+            <li><strong>Start commissioning</strong> (<code>POST /smart_home/pairing</code>) — opens a pairing window and
+            returns a <strong>QR code</strong> (rendered in-page), an 11-digit <strong>manual code</strong>, and an expiry time.</li>
+            <li>In your smart-home app, choose "Add Matter device" and scan the QR or type the manual code before it expires.</li>
+            <li><strong>Fabrics</strong> = the number of smart homes the device belongs to; "latest status" shows the
+            last commissioning result (reset each power cycle).</li>
+            <li><strong>Erase all fabrics</strong> (<code>DELETE /smart_home/pairing</code>) — removes every smart-home link.</li>
+          </ol>
+          <h3>Emulated Switch</h3>
+          <p>The Matter switch state (<code>GET/POST /smart_home/switch</code>). Toggle it manually, or let the BUSY
+          timer drive it automatically ("trigger smart home" in timer settings). <em>Startup behavior</em> sets what
+          happens on boot: <code>off / on / toggle / last</code>.</p>
+        </div>
+
+        <div class="card help-doc" id="help-system">
+          <h2>⚙️ System & Time</h2>
+          <ul>
+            <li><strong>Device Name</strong> (<code>GET/POST /name</code>) — up to 20 chars, shown in apps and BLE.</li>
+            <li><strong>Clock</strong> (<code>GET /time</code>) — device time with timezone. <em>Sync from browser</em>
+            pushes your PC's local time as an ISO-8601 timestamp (<code>POST /time/timestamp</code>) — handy when the
+            device has no NTP.</li>
+            <li><strong>Timezone</strong> — dropdown loaded from <code>GET /time/tzlist</code> (all supported zones with
+            offsets); <em>Set timezone</em> applies it (<code>POST /time/timezone</code>).</li>
+            <li><strong>Firmware info</strong> (<code>GET /status/firmware</code>) — version, target, branch, build date,
+            commit, radio (NWP) and Matter versions.</li>
+            <li><strong>Log dump</strong> (<code>POST /log_dump</code>) — writes the captured device log to storage and
+            returns its path; download it from the Storage tab to attach to a support ticket.</li>
+          </ul>
+        </div>
+
+        <div class="card help-doc" id="help-firmware">
+          <h2>⬆️ Firmware</h2>
+          <h3>Over-the-air updates</h3>
+          <ol>
+            <li><strong>Check for updates</strong> (<code>POST /update/check</code>) — asks the cloud for a newer build;
+            the status card shows the available version after a few seconds.</li>
+            <li><strong>Install</strong> (<code>POST /update/install</code>) — downloads and applies it; the progress bar
+            tracks download speed/bytes from <code>GET /update/status</code>. The device reboots when done.</li>
+            <li><strong>Abort download</strong> (<code>POST /update/abort_download</code>) — cancels an in-progress download.</li>
+            <li><strong>Changelog</strong> (<code>GET /update/changelog?version=…</code>) — release notes for any version.</li>
+          </ol>
+          <p class="muted">Install is blocked when the battery check fails (<code>is_allowed: false</code>) — plug in USB power.</p>
+          <h3>Auto-update</h3>
+          <p><code>GET/POST /update/autoupdate</code> — enable/disable automatic installs and set the daily window
+          (default 02:00–05:00).</p>
+          <h3>Manual flash</h3>
+          <p><code>POST /update</code> uploads a firmware <code>.tar</code> directly — for beta/RC builds from the
+          BUSY firmware repo. <strong>Warning:</strong> flashing a bad image can require recovery; only use files
+          from official sources.</p>
+        </div>
+
+        <div class="card help-doc" id="help-playground">
+          <h2>🧪 API Playground</h2>
+          <p>A raw console that can call <strong>every documented endpoint</strong> — use it to experiment or to reach
+          the few operations with no dedicated UI.</p>
+          <ol>
+            <li>Pick the HTTP method, then type or pick a path from the dropdown (all 48 spec paths are listed).
+            You can paste full cloud URLs or <code>/busybar/…</code> paths — they're normalized automatically.</li>
+            <li><em>Query params</em> — a JSON object, e.g. <code>{"display":"0"}</code> or <code>{"key":"up"}</code>.</li>
+            <li><em>JSON body</em> — request payload for POST/PUT, e.g. <code>{"name":"My Bar"}</code>.</li>
+            <li><strong>Send</strong> — response shows status pill (green/red), round-trip ms, and the body
+            (binary bodies show a byte count).</li>
+          </ol>
+          <h3>Examples</h3>
+          <pre class="code">GET  /version
+POST /input                    params: {"key":"busy"}
+POST /display/brightness       params: {"value":"auto"}
+PUT  /busy/profiles/custom     body: { …profile JSON… }
+GET  /screen                   params: {"display":"1"}
+POST /log_dump                 params: {"filename":"support"}</pre>
+        </div>
+
+        <div class="card help-doc" id="help-screens">
+          <h2>🖼️ Screen format (technical)</h2>
+          <p><code>GET /busybar/screen?display=N</code> is documented as <code>image/bmp</code>, but the body is
+          actually <strong>base64-encoded raw framebuffer data</strong>, discovered by probing the device:</p>
+          <table class="tbl">
+            <tr><th>Display</th><th>Geometry</th><th>Encoding</th><th>Bytes</th></tr>
+            <tr><td>Front (0)</td><td>72 × 16, color</td><td>RGB888, 3 bytes/px, row-major</td><td>3456</td></tr>
+            <tr><td>Back (1)</td><td>160 × 80, mono</td><td>4-bit grayscale, 2 px/byte (high nibble = even x), 80 bytes/row</td><td>6400</td></tr>
+          </table>
+          <p>The proxy base64-decodes frames and forwards raw bytes with <code>X-Frame-Width</code>,
+          <code>X-Frame-Height</code> and <code>X-Frame-Format</code> (<code>rgb888</code>/<code>gray4</code>) headers;
+          the browser expands them onto canvases. If firmware changes the format, the canvases show
+          "no signal" instead of garbage.</p>
+          <p class="muted">Note: draw coordinates on the back display use the device's own coordinate space —
+          rectangles/text positioned by x/y land where the firmware maps them onto the 160×80 buffer.</p>
+        </div>
+
+        <div class="card help-doc" id="help-troubleshooting">
+          <h2>🩹 Troubleshooting</h2>
+          <table class="tbl">
+            <tr><th>Symptom</th><th>Likely cause → fix</th></tr>
+            <tr><td>Red "unreachable" pill</td><td>Device offline / token invalid → check the bar is powered &amp;
+            connected (USB or Wi-Fi), then set a fresh token via 🔑 Token.</td></tr>
+            <tr><td>Screens show "no signal"</td><td>Frame fetch failed → device asleep or cloud hiccup; hit ↻ Snapshot.
+            If persistent, firmware may have changed the frame format (see Screen format).</td></tr>
+            <tr><td>Draw does nothing</td><td>Priority too low → a running work session is priority 90; use priority ≥ 90
+            or stop the session first. Check the toast for the API error.</td></tr>
+            <tr><td>Audio silent</td><td>Volume at 0, or asset path wrong → stock sounds use
+            <code>shared/…</code>; uploaded assets must be uploaded with the same App ID you play them with.</td></tr>
+            <tr><td>Timer won't start</td><td>Profile PUT failed → invalid timer_settings; use the Start New Session
+            form (builds valid payloads) instead of hand-editing.</td></tr>
+            <tr><td>Screen blanks when starting/pausing in custom mode</td><td>"Show work phase only" is enabled on an
+            INFINITE profile → the firmware hides all non-work phases, and INFINITE has none. Turn the flag off
+            (Custom quick controls do this automatically) or use an INTERVAL profile.</td></tr>
+            <tr><td>Storage 400 errors</td><td>Path pattern violation → paths must start with <code>/ext</code> and use
+            only letters, digits, <code>. _ -</code>.</td></tr>
+            <tr><td>Matter pairing QR expired</td><td>Commissioning windows time out → Start commissioning again and
+            scan promptly.</td></tr>
+            <tr><td>Install button blocked</td><td>Battery too low → connect USB power; <code>is_allowed</code> becomes true.</td></tr>
+            <tr><td>App won't start locally</td><td><code>pip install flask requests</code>; port 8931 busy →
+            <code>PORT=9000 python app.py</code>.</td></tr>
+          </table>
+        </div>
+
+        <div class="card help-doc" id="help-faq">
+          <h2>💬 FAQ</h2>
+          <p><strong>Does this work when the bar is on USB?</strong> Yes — the cloud API is transport-agnostic;
+          the Dashboard's Network card shows whether <code>usb</code> or <code>wifi</code> is active.</p>
+          <p><strong>Is my token sent to the browser?</strong> No. It lives only in the local Flask process;
+          pages call <code>127.0.0.1</code> routes and the proxy attaches the token upstream.</p>
+          <p><strong>Can I run this on another port / machine?</strong> <code>PORT=8080 python app.py</code>.
+          Binding beyond localhost is not recommended (the proxy has no auth of its own).</p>
+          <p><strong>What's the difference between "assets" and "storage"?</strong> Storage is the raw filesystem
+          (<code>/ext/…</code>); assets are files namespaced to an App ID for the draw/audio APIs. An image you want
+          to draw must be an <em>asset</em> (or a stock <code>shared/…</code> file).</p>
+          <p><strong>Why does my draw disappear after a few seconds?</strong> Elements have <code>timeout</code>
+          (seconds); set it higher, or re-send. Clearing happens automatically on timeout.</p>
+          <p><strong>Can several apps draw at once?</strong> Yes — the firmware composites by priority and App ID;
+          equal priority from a different app overrides the current one.</p>
+          <p><strong>Where did the extra Python files go?</strong> The geometry probe scripts used during
+          development were removed; the app folder only needs <code>app.py</code> and <code>static/</code>.</p>
+        </div>
+
+        <div class="card help-doc" id="help-apiref">
+          <h2>📚 API reference (all 63 operations)</h2>
+          <p>Spec: <code>https://api.busy.app/busybar/docs</code> (OpenAPI 1.1.0-rc, device API 24.3.0).
+          All paths below are relative to <code>/busybar</code>; the local proxy exposes them under
+          <code>/api</code>. Auth: <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+          <div id="apiref-table"></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toasts"></div>
+<button id="back-top" title="Back to top">↑</button>
+
+<dialog id="token-dialog">
+  <h3>API Token</h3>
+  <p class="muted">Bearer token for api.busy.app. Stored in the local proxy process only.</p>
+  <input id="token-input" type="password" placeholder="paste token">
+  <div class="btn-row">
+    <button class="btn btn-primary" id="token-save">Save</button>
+    <button class="btn" id="token-close">Close</button>
+  </div>
+  <div id="token-status" class="muted"></div>
+</dialog>
+
+<script src="/static/vendor/qrcode.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
