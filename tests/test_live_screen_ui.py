@@ -40,30 +40,47 @@ def test_front_renderer_uses_native_ten_pixel_led_cells():
     assert "drawFrontLedMatrix(canvas, buf, w, h)" in js
 
 
-def test_rear_screen_uses_physical_control_housing():
+def test_rear_screen_is_clean_readable_and_separate_from_controls():
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     css = (ROOT / "static" / "style.css").read_text(encoding="utf-8")
     js = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
 
-    for class_name in (
-        "busybar-rear-preview",
-        "rear-mode-selector",
-        "rear-start-control",
-        "rear-back-button",
-        "rear-scroll-dial",
-        "rear-black-panel",
-    ):
-        assert class_name in html
-        assert f".{class_name}" in css
-
+    assert "busybar-rear-preview" not in html
+    assert "rear-black-panel" not in html
+    assert "rear-busy-logo" not in html
+    assert '<div class="rear-display-clean">' in html
     assert '<canvas id="screen-back" width="160" height="80"></canvas>' in html
-    assert ".busybar-rear-preview #screen-back" in css
-    assert '<button class="rear-scroll-dial" id="rear-dial"' in html
-    assert '<button class="rear-back-button" id="rear-back"' in html
-    assert '<button class="rear-start-control" id="rear-start"' in html
-    assert '<button class="rear-mode-selector" id="rear-mode"' in html
+    assert "Rear display · 160 × 80 monochrome" in html
+    assert ".rear-display-clean #screen-back" in css
+    assert "width: 300px; height: 150px; border: 0" in css
+    assert "image-rendering: auto" in css
+
+    for control_id in ("rear-up", "rear-dial", "rear-down", "rear-back", "rear-start", "rear-mode"):
+        assert f'id="{control_id}"' in html
+
+    assert 'sendRearInput("up")' in js
     assert 'sendRearInput("ok")' in js
-    assert 'sendRearInput(event.deltaY < 0 ? "up" : "down")' in js
+    assert 'sendRearInput("down")' in js
     assert 'const rearModes = ["busy", "custom", "off", "apps", "settings"]' in js
-    assert '/static/style.css?v=20260722-rear-controls' in html
-    assert '/static/app.js?v=20260722-rear-controls' in html
+    assert "const bytesPerRow = Math.ceil(w / 2)" in js
+    assert "const v = lo * 17, o = (row * w + x0) * 4" in js
+    assert "const v = hi * 17, o = (row * w + x1) * 4" in js
+    assert '/static/style.css?v=20260722-rear-300-docs' in html
+    assert '/static/app.js?v=20260722-rear-300-docs' in html
+    assert "!document.hidden" in js
+    assert 'document.addEventListener("visibilitychange"' in js
+
+
+def test_project_and_in_app_docs_match_reviewed_screen_format():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    help_html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
+
+    for docs in (readme, help_html):
+        assert "low nibble" in docs.lower()
+        assert "300×150" in docs or "300 × 150" in docs
+        assert "high nibble = even" not in docs.lower()
+
+    assert "BUSY → CUSTOM → OFF → APPS → SETTINGS" in readme
+    assert "BUSY → CUSTOM → OFF → APPS → SETTINGS" in help_html
+    assert '$env:BUSY_API_BASE = "http://&lt;device-ip&gt;/api"' in help_html
+    assert "Authorization: Bearer &lt;token&gt;" in help_html

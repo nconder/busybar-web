@@ -162,18 +162,21 @@ async function renderScreen(canvasId, display) {
       return;
     } else if (fmt === "gray4" && w && h) {
       img = new Uint8ClampedArray(w * h * 4);
+      const bytesPerRow = Math.ceil(w / 2);
       for (let row = 0; row < h; row++) {
-        for (let bx = 0; bx < 80; bx++) {
-          const byte = buf[row * 80 + bx];
-          const hi = (byte >> 4) & 0x0f;   // even pixel (x = 2*bx)
-          const lo = byte & 0x0f;          // odd pixel
+        for (let bx = 0; bx < bytesPerRow; bx++) {
+          const byte = buf[row * bytesPerRow + bx];
+          // BUSY's packed L4 format is low-nibble first. Treating the high
+          // nibble as the left pixel swaps every pair and mangles OLED text.
+          const lo = byte & 0x0f;          // even pixel (x = 2*bx)
+          const hi = (byte >> 4) & 0x0f;   // odd pixel
           const x0 = bx * 2, x1 = bx * 2 + 1;
           if (x0 < w) {
-            const v = hi * 17, o = (row * w + x0) * 4;
+            const v = lo * 17, o = (row * w + x0) * 4;
             img[o] = img[o + 1] = img[o + 2] = v; img[o + 3] = 255;
           }
           if (x1 < w) {
-            const v = lo * 17, o = (row * w + x1) * 4;
+            const v = hi * 17, o = (row * w + x1) * 4;
             img[o] = img[o + 1] = img[o + 2] = v; img[o + 3] = 255;
           }
         }
@@ -198,10 +201,12 @@ function startScreenLoop() {
   stopScreenLoop();
   const generation = screenLoopGeneration;
   const tick = async () => {
-    if ($("#live-screen-toggle").checked && $("#tab-dashboard").classList.contains("active")) {
+    if (!document.hidden && $("#live-screen-toggle").checked && $("#tab-dashboard").classList.contains("active")) {
       // Wait for both cloud/device calls before scheduling another pair.  The
       // old setInterval(2000) piled up overlapping requests whenever BUSY's
       // origin slowed down, which increased the chance of Cloudflare 504s.
+      // Hidden tabs also skip requests so duplicate background tabs do not
+      // independently overload the device's small local HTTP server.
       await Promise.allSettled([
         renderScreen("#screen-front", 0),
         renderScreen("#screen-back", 1),
@@ -211,6 +216,9 @@ function startScreenLoop() {
   };
   tick();
 }
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && $("#tab-dashboard").classList.contains("active")) startScreenLoop();
+});
 function stopScreenLoop() {
   screenLoopGeneration++;
   if (screenTimer) clearTimeout(screenTimer);
@@ -443,18 +451,11 @@ async function sendRearInput(key) {
   return r;
 }
 
+$("#rear-up").addEventListener("click", () => sendRearInput("up"));
 $("#rear-dial").addEventListener("click", () => sendRearInput("ok"));
+$("#rear-down").addEventListener("click", () => sendRearInput("down"));
 $("#rear-back").addEventListener("click", () => sendRearInput("back"));
 $("#rear-start").addEventListener("click", () => sendRearInput("start"));
-
-let rearDialWheelAt = 0;
-$("#rear-dial").addEventListener("wheel", (event) => {
-  event.preventDefault();
-  const now = Date.now();
-  if (now - rearDialWheelAt < 180) return;
-  rearDialWheelAt = now;
-  sendRearInput(event.deltaY < 0 ? "up" : "down");
-}, { passive: false });
 
 const rearModes = ["busy", "custom", "off", "apps", "settings"];
 let rearModeIndex = 0;
@@ -462,7 +463,7 @@ $("#rear-mode").addEventListener("click", async () => {
   rearModeIndex = (rearModeIndex + 1) % rearModes.length;
   const mode = rearModes[rearModeIndex];
   const r = await sendRearInput(mode);
-  if (r.ok) $("#rear-mode em").textContent = mode.toUpperCase();
+  if (r.ok) $("#rear-mode span").textContent = mode.toUpperCase();
 });
 
 // ---------------------------------------------------------------------------

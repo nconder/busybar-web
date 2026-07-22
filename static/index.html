@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BUSY Bar — Mission Control</title>
-<link rel="stylesheet" href="/static/style.css?v=20260722-rear-controls">
+<link rel="stylesheet" href="/static/style.css?v=20260722-rear-300-docs">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -53,17 +53,18 @@
             <figcaption>Front display · live device view</figcaption>
           </figure>
           <figure class="rear-screen-figure">
-            <div class="busybar-rear-preview">
-              <button class="rear-scroll-dial" id="rear-dial" title="Click: OK · Scroll: up/down"><span>OK</span></button>
-              <button class="rear-back-button" id="rear-back" title="Back">↩</button>
-              <button class="rear-start-control" id="rear-start" title="Start / Pause">Start / Pause</button>
-              <button class="rear-mode-selector" id="rear-mode" title="Change mode"><span></span><em>BUSY</em></button>
-              <div class="rear-black-panel">
-                <canvas id="screen-back" width="160" height="80"></canvas>
-                <div class="rear-busy-logo" aria-hidden="true">▶BUSY</div>
-              </div>
+            <div class="rear-display-clean">
+              <canvas id="screen-back" width="160" height="80"></canvas>
             </div>
-            <figcaption>Rear display · controls are live · scroll dial for up/down</figcaption>
+            <figcaption>Rear display · 160 × 80 monochrome</figcaption>
+            <div class="rear-control-toolbar" aria-label="Rear display controls">
+              <button class="btn btn-ghost" id="rear-up">↑ Up</button>
+              <button class="btn" id="rear-dial">OK</button>
+              <button class="btn btn-ghost" id="rear-down">↓ Down</button>
+              <button class="btn btn-ghost" id="rear-back">← Back</button>
+              <button class="btn" id="rear-start">Start / Pause</button>
+              <button class="btn btn-ghost" id="rear-mode">Mode: <span>BUSY</span></button>
+            </div>
           </figure>
         </div>
       </div>
@@ -511,32 +512,43 @@
         <div class="card help-doc" id="help-quickstart">
           <h2>🚀 Quick start</h2>
           <p>Mission Control is a local web console for your <strong>BUSY Bar</strong> — it talks to the
-          device through the BUSY Cloud HTTP API (<code>https://api.busy.app/busybar</code>) so you can drive
+          device through its direct local API or the BUSY Cloud HTTP API so you can drive
           every feature from one browser page: live screen mirrors, drawing, audio, the Pomodoro-style
           BUSY timer, the file system, Wi-Fi/BLE, Matter smart-home pairing, clock, and firmware updates.</p>
-          <h3>Start the app</h3>
+          <h3>Direct local mode — PowerShell</h3>
           <pre class="code">cd busybar-web
+pip install flask requests
+$env:BUSY_API_BASE = "http://&lt;device-ip&gt;/api"
+Remove-Item Env:BUSY_API_TOKEN -ErrorAction SilentlyContinue
 python app.py
 # then open http://127.0.0.1:8931</pre>
+          <p>If local access mode is <code>key</code>, set <code>BUSY_API_TOKEN</code> to the device's 4–10 digit
+          local key instead of removing it. You can also use <code>http://busybar.local/api</code> when mDNS is
+          reliable; a direct LAN IP is usually faster on Windows.</p>
+          <h3>Cloud mode — PowerShell</h3>
+          <pre class="code">$env:BUSY_API_TOKEN = "your-BAR-scope-token"
+Remove-Item Env:BUSY_API_BASE -ErrorAction SilentlyContinue
+python app.py</pre>
           <h3>Requirements</h3>
           <ul>
             <li>Python 3.10+ with <code>flask</code> and <code>requests</code> (<code>pip install flask requests</code>)</li>
-            <li>A BUSY Bar linked to your BUSY account, powered on, with internet access (USB or Wi-Fi)</li>
-            <li>A BAR-scope API token (see <a href="#help-token">API token</a>)</li>
+            <li>A powered-on BUSY Bar reachable through its local API or BUSY Cloud</li>
+            <li>A BAR-scope API token only for cloud mode (see <a href="#help-token">API token</a>)</li>
           </ul>
           <h3>How it works</h3>
           <p>The browser talks to a tiny Flask proxy (<code>app.py</code>). By default the proxy uses
-          <code>api.busy.app</code>; set <code>BUSY_API_BASE=http://busybar.local/api</code> before launch to
+          <code>api.busy.app</code>; set <code>BUSY_API_BASE</code> before launch to
           communicate directly over USB/LAN without Cloudflare or internet. Every tab calls local
           <code>/api/…</code> routes that map 1:1 onto the device API.</p>
-          <p class="muted">The green pill in the top bar shows the live cloud API version when the device is
-          reachable; it turns red if the device or token is unreachable.</p>
+          <p class="muted">The green pill in the top bar shows the active API version when the selected backend is
+          reachable; it turns red if the device, cloud service, or required token is unreachable.</p>
         </div>
 
         <div class="card help-doc" id="help-token">
           <h2>🔑 API token</h2>
           <p>All cloud calls authenticate with an HTTP <strong>Bearer</strong> token
-          (<code>Authorization: Bearer &lt;token&gt;</code>).</p>
+          (<code>Authorization: Bearer &lt;token&gt;</code>). Direct local mode needs no token when access mode is
+          <code>enabled</code>; access mode <code>key</code> uses its 4–10 digit local key.</p>
           <h3>Where to get one</h3>
           <ol>
             <li>Open the BUSY mobile/desktop app → <em>Settings → Development → API tokens</em>.</li>
@@ -564,10 +576,18 @@ python app.py
           <p>The landing tab — a live overview of the whole device, auto-refreshing.</p>
           <h3>Live Screens</h3>
           <ul>
-            <li><strong>Front (72×16, color)</strong> and <strong>Back (160×80, mono)</strong> canvases mirror what the
-            physical displays currently show. Each pair finishes before another is scheduled, with a 5&nbsp;s delay,
-            preventing overlapping requests during cloud slowdowns.</li>
-            <li><strong>↻ Snapshot</strong> grabs a single frame on demand.</li>
+            <li><strong>Front (72×16, color)</strong> mirrors the native <code>10.0.4.20</code> preview: the source
+            pixels are rendered as rounded LED cells inside the BUSY Bar shell.</li>
+            <li><strong>Rear (160×80, 4-bit mono)</strong> is shown as a clean 300×150 preview with smooth 2:1
+            scaling. The packed pixels are decoded low-nibble first; reversing that order swaps adjacent pixels
+            and makes the OLED text unreadable.</li>
+            <li>The rear toolbar sends physical-equivalent inputs: <strong>Up, OK, Down, Back, Start / Pause</strong>,
+            and a mode selector that cycles <strong>BUSY → CUSTOM → OFF → APPS → SETTINGS</strong>.</li>
+            <li>With <strong>live refresh</strong> enabled, each front/rear pair finishes before another is scheduled,
+            followed by a 5&nbsp;s delay. This prevents requests from stacking up when the device or cloud is slow.</li>
+            <li><strong>↻ Snapshot</strong> grabs one frame pair on demand. If local access becomes intermittent,
+            disable live refresh, wait a few seconds, then use Snapshot. Hidden tabs pause polling automatically;
+            close any additional visible Mission Control windows.</li>
             <li>Frames are fetched via <code>GET /busybar/screen</code> and decoded in the browser — see
             <a href="#help-screens">Screen format</a>.</li>
           </ul>
@@ -782,12 +802,15 @@ POST /log_dump                 params: {"filename":"support"}</pre>
           <table class="tbl">
             <tr><th>Display</th><th>Geometry</th><th>Encoding</th><th>Bytes</th></tr>
             <tr><td>Front (0)</td><td>72 × 16, color</td><td>RGB888, 3 bytes/px, row-major</td><td>3456</td></tr>
-            <tr><td>Back (1)</td><td>160 × 80, mono</td><td>4-bit grayscale, 2 px/byte (high nibble = even x), 80 bytes/row</td><td>6400</td></tr>
+            <tr><td>Rear (1)</td><td>160 × 80, mono</td><td>Packed 4-bit grayscale, 2 px/byte, <strong>low nibble first</strong>, 80 bytes/row</td><td>6400</td></tr>
           </table>
           <p>The proxy base64-decodes frames and forwards raw bytes with <code>X-Frame-Width</code>,
           <code>X-Frame-Height</code> and <code>X-Frame-Format</code> (<code>rgb888</code>/<code>gray4</code>) headers;
-          the browser expands them onto canvases. If firmware changes the format, the canvases show
-          "no signal" instead of garbage.</p>
+          the browser expands them onto canvases. Front pixels use the native-style rounded 10×10 LED renderer;
+          the rear canvas remains 160×80 internally and is displayed at 300×150. If firmware changes the format,
+          the canvases show "no signal" instead of garbage.</p>
+          <pre class="code">rear byte 0: low nibble → x=0, high nibble → x=1
+rear byte 1: low nibble → x=2, high nibble → x=3</pre>
           <p class="muted">Note: draw coordinates on the back display use the device's own coordinate space —
           rectangles/text positioned by x/y land where the firmware maps them onto the 160×80 buffer.</p>
         </div>
@@ -800,6 +823,10 @@ POST /log_dump                 params: {"filename":"support"}</pre>
             connected (USB or Wi-Fi), then set a fresh token via 🔑 Token.</td></tr>
             <tr><td>Screens show "no signal"</td><td>Frame fetch failed → device asleep or cloud hiccup; hit ↻ Snapshot.
             If persistent, firmware may have changed the frame format (see Screen format).</td></tr>
+            <tr><td>Rear text looks scrambled</td><td>The packed gray4 framebuffer is being decoded in the wrong
+            nibble order → the low nibble is the left/even pixel. Use the current decoder described in Screen format.</td></tr>
+            <tr><td>Local screen requests become intermittent</td><td>Disable live refresh, wait a few seconds, then
+            use ↻ Snapshot. Hidden tabs pause automatically; close any additional visible Mission Control windows.</td></tr>
             <tr><td>Draw does nothing</td><td>Priority too low → a running work session is priority 90; use priority ≥ 90
             or stop the session first. Check the toast for the API error.</td></tr>
             <tr><td>Audio silent</td><td>Volume at 0, or asset path wrong → stock sounds use
@@ -866,6 +893,6 @@ POST /log_dump                 params: {"filename":"support"}</pre>
 </dialog>
 
 <script src="/static/vendor/qrcode.min.js"></script>
-<script src="/static/app.js?v=20260722-rear-controls"></script>
+<script src="/static/app.js?v=20260722-rear-300-docs"></script>
 </body>
 </html>

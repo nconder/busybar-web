@@ -144,74 +144,17 @@ input[type="range"] { accent-color: var(--accent); }
   background: transparent;
 }
 .front-screen-figure figcaption { margin-top: 9px; }
-.rear-screen-figure { width: 520px; }
-.busybar-rear-preview {
-  position: relative; width: 520px; height: 250px; overflow: hidden;
-  border: 1px solid #878b8e; border-radius: 25px 25px 20px 20px;
-  background:
-    linear-gradient(105deg, transparent 0 18%, rgba(255,255,255,.42) 32%, transparent 47%),
-    linear-gradient(165deg, #f0efec 0%, #c7c7c5 48%, #929598 100%);
-  box-shadow: inset 0 2px 2px rgba(255,255,255,.75), 0 8px 18px rgba(0,0,0,.28);
+.rear-screen-figure { width: 300px; }
+.rear-display-clean { display: flex; justify-content: center; }
+.rear-display-clean #screen-back {
+  width: 300px; height: 150px; border: 0; border-radius: 0;
+  background: #000; filter: contrast(1.08); image-rendering: auto;
 }
-.rear-black-panel {
-  position: absolute; z-index: 1; left: 8px; right: 8px; top: 90px; bottom: 8px;
-  border: 1px solid #050607; border-radius: 9px 9px 17px 17px;
-  background: linear-gradient(120deg, #202326, #050607 44%, #171a1d);
-  box-shadow: inset 0 1px 2px rgba(255,255,255,.14);
+.rear-control-toolbar {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  width: 300px; margin-top: 10px;
 }
-.busybar-rear-preview #screen-back {
-  position: absolute; z-index: 2; left: 131px; top: 13px;
-  width: 240px; height: 120px; border: 3px solid #555a5d;
-  border-radius: 7px; background: #000; filter: contrast(1.08);
-}
-.rear-busy-logo {
-  position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
-  color: #e9e9e7; font: 700 9px/1 var(--sans); letter-spacing: -.04em;
-}
-.rear-scroll-dial {
-  position: absolute; z-index: 3; left: 23px; top: 9px; width: 72px; height: 72px;
-  display: grid; place-items: center; border: 4px solid #e9e7e3; border-bottom-color: #7f8284;
-  border-radius: 50%; color: #555; font: 700 12px var(--sans);
-  background: radial-gradient(circle at 45% 38%, #faf9f6 0 49%, #d2d1cf 51% 66%, #686b6d 68%);
-  box-shadow: 0 3px 4px rgba(0,0,0,.38), inset 0 0 0 3px #ff7134;
-  cursor: pointer;
-}
-.rear-back-button {
-  position: absolute; z-index: 4; left: 105px; top: 48px; width: 27px; height: 27px;
-  display: grid; place-items: center; border: 2px solid #913110; border-radius: 50%;
-  color: white; background: linear-gradient(#ff8a45, #e55a1e); font-size: 15px;
-  box-shadow: 0 2px 3px rgba(0,0,0,.3);
-  cursor: pointer;
-}
-.rear-start-control {
-  position: absolute; z-index: 3; left: 157px; top: 10px; width: 207px; height: 62px;
-  display: grid; place-items: center; border: 1px solid #8d9092; border-radius: 8px 8px 18px 18px;
-  color: #747779; font: 600 16px var(--sans); letter-spacing: .02em;
-  background: linear-gradient(#f8f7f4, #d9d8d5); box-shadow: 0 6px 0 #626568, 0 8px 4px rgba(0,0,0,.27);
-  cursor: pointer;
-}
-.rear-mode-selector {
-  position: absolute; z-index: 3; right: 24px; top: 17px; width: 82px; height: 46px;
-  border-radius: 24px; background: linear-gradient(#efeeeb, #b8b9b9);
-  box-shadow: 0 4px 0 #696c6e, 0 6px 4px rgba(0,0,0,.26), inset 0 0 0 3px #ff7134;
-  cursor: pointer;
-}
-.rear-mode-selector span {
-  position: absolute; right: 9px; top: 8px; width: 13px; height: 5px;
-  border-radius: 4px; background: #ff7134;
-}
-.rear-mode-selector em {
-  position: absolute; left: 0; right: 0; bottom: 6px; color: #575a5b;
-  font: 700 8px/1 var(--sans); font-style: normal; text-align: center;
-}
-.rear-scroll-dial:hover, .rear-back-button:hover,
-.rear-start-control:hover, .rear-mode-selector:hover { filter: brightness(1.06); }
-.rear-scroll-dial:active, .rear-back-button:active,
-.rear-start-control:active, .rear-mode-selector:active { transform: translateY(2px); }
-.rear-scroll-dial:focus-visible, .rear-back-button:focus-visible,
-.rear-start-control:focus-visible, .rear-mode-selector:focus-visible {
-  outline: 3px solid #55aaff; outline-offset: 2px;
-}
+.rear-control-toolbar .btn { padding: 6px 9px; font-size: 12px; }
 
 @media (max-width: 520px) {
   .busybar-device-preview { width: 310px; height: 100px; }
@@ -219,10 +162,8 @@ input[type="range"] { accent-color: var(--accent); }
   .busybar-device-preview #screen-front {
     left: 11px; top: 25px; width: 288px; height: 64px;
   }
-  .rear-screen-figure { width: 310px; overflow: hidden; }
-  .busybar-rear-preview {
-    transform: scale(.59615); transform-origin: top left; margin-bottom: -101px;
-  }
+  .rear-screen-figure, .rear-control-toolbar { width: 288px; }
+  .rear-display-clean #screen-back { width: 288px; height: 144px; }
 }
 
 /* remote pad */

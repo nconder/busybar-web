@@ -1,13 +1,13 @@
 # BUSY Bar — Mission Control
 
 A local web console for the **BUSY Bar** productivity device. It drives every
-feature exposed by the BUSY Cloud BAR HTTP API
+feature exposed by the BUSY Cloud BAR HTTP API or the device's direct local API
 ([docs](https://api.busy.app/busybar/docs), OpenAPI 1.1.0-rc) from a single
 browser page — no cloud account UI required.
 
 ![tabs](https://img.shields.io/badge/tabs-10-orange) ![api](https://img.shields.io/badge/API%20operations-63-green)
 
-![Dashboard screenshot](dashboard.png)
+![Current Mission Control dashboard](dashboard.png)
 
 ---
 
@@ -45,14 +45,17 @@ Requirements:
 
 The device serves the same API at `http://busybar.local/api` over Wi-Fi or its
 USB virtual LAN. First enable local HTTP API access on the device (Mission
-Control → **Connectivity → Local HTTP API access**, or the device web UI), then.
+Control → **Connectivity → Local HTTP API access**, or the device web UI), then
+start Mission Control with the local base URL:
 
 **PowerShell (Windows):**
 
 ```powershell
 $env:BUSY_API_BASE = "http://busybar.local/api"
-# If local access mode is "key", also set its 4–10 digit key:
-$env:BUSY_API_TOKEN = "your-local-access-key"
+# For open local access, clear any cloud token left in this shell:
+Remove-Item Env:BUSY_API_TOKEN -ErrorAction SilentlyContinue
+# If local access mode is "key", uncomment and set its 4–10 digit key:
+# $env:BUSY_API_TOKEN = "your-local-access-key"
 python app.py
 ```
 
@@ -60,8 +63,10 @@ python app.py
 
 ```bash
 export BUSY_API_BASE="http://busybar.local/api"
-# If local access mode is "key", also set its 4–10 digit key:
-export BUSY_API_TOKEN="your-local-access-key"
+# For open local access, clear any cloud token left in this shell:
+unset BUSY_API_TOKEN
+# If local access mode is "key", uncomment and set its 4–10 digit key:
+# export BUSY_API_TOKEN="your-local-access-key"
 python app.py
 ```
 
@@ -91,7 +96,7 @@ framebuffers (see below).
 
 | Tab | What you can do | Endpoints used |
 |---|---|---|
-| 📊 Dashboard | Live mirrors of both displays (completion-based 5 s refresh), power/device/system/network/timer/account cards | `screen`, `status/*`, `wifi/status`, `transport`, `busy/snapshot`, `account/*` |
+| 📊 Dashboard | Live mirrors of both displays: native-style front LED/device preview, readable rear OLED preview, rear input toolbar, completion-based 5 s refresh, and power/device/system/network/timer/account cards | `screen`, `input`, `status/*`, `wifi/status`, `transport`, `busy/snapshot`, `account/*` |
 | 🖥️ Display & Audio | Draw text/images/animations/countdowns/rectangles (presets + raw JSON), clear display, play/stop audio, volume, brightness, remote key presses | `display/draw`, `audio/play`, `audio/volume`, `display/brightness`, `input` |
 | ⏱️ BUSY Timer | Start Simple / Interval (Pomodoro) / Infinite sessions, pause/resume/stop, edit both timer profiles as JSON | `busy/snapshot`, `busy/profiles/{slot}` |
 | 🗄️ Storage & Assets | Browse `/ext`, download/upload/mkdir/rename/delete, upload app assets, wipe an app's assets | `storage/*`, `assets/upload` |
@@ -110,11 +115,39 @@ returns **base64-encoded raw framebuffers**:
 | Display | Geometry | Encoding | Decoded bytes |
 |---|---|---|---|
 | Front (`display=0`) | 72 × 16, color | RGB888, 3 B/px, row-major | 3456 |
-| Back (`display=1`) | 160 × 80, mono | 4-bit grayscale, 2 px/byte (high nibble = even x), 80 B/row | 6400 |
+| Rear (`display=1`) | 160 × 80, mono | Packed 4-bit grayscale, 2 px/byte, **low nibble first**, 80 B/row | 6400 |
 
 The proxy decodes the base64 and serves raw bytes with `X-Frame-Width`,
 `X-Frame-Height`, `X-Frame-Format` (`rgb888` / `gray4`) headers; the frontend
-expands them onto canvases.
+expands them onto canvases. The front preview follows the native
+`http://10.0.4.20/` presentation: each source pixel is rendered as a rounded
+10 × 10 LED cell inside the BUSY Bar shell. The rear framebuffer remains a
+160 × 80 canvas and is displayed at 300 × 150 with smooth proportional scaling.
+
+Packed rear bytes must be decoded in this order:
+
+```text
+byte 0 low nibble  → x=0
+byte 0 high nibble → x=1
+byte 1 low nibble  → x=2
+byte 1 high nibble → x=3
+```
+
+Reversing the nibbles swaps every adjacent pixel and makes text such as
+`CUSTOM`, `Start`, and `Setup` appear corrupted.
+
+### Live-screen controls
+
+The rear preview has a separate toolbar so controls never cover or frame the
+OLED image: **Up**, **OK**, **Down**, **Back**, **Start / Pause**, and a mode
+button that cycles through **BUSY → CUSTOM → OFF → APPS → SETTINGS**. Each
+control sends `POST /input?key=…` and then refreshes the rear frame.
+
+Live refresh serializes each front/rear request pair and waits five seconds
+after completion before polling again. Hidden tabs pause automatically so they
+do not poll the device in the background. Disable **live refresh** when debugging
+an overloaded or intermittently reachable local device, then use **Snapshot**
+for one bounded frame pair.
 
 ## API coverage
 
@@ -130,6 +163,8 @@ tab for the grouped list, or the spec at `https://api.busy.app/busybar/docs`.
 | Red "unreachable" pill | Device offline or token invalid → power/connect the bar, set a fresh token via 🔑 Token |
 | Draw ignored | Priority too low — a running work session holds priority 90; draw with ≥ 90 or stop the session |
 | "no signal" canvases | Frame fetch failed → ↻ Snapshot; persistent = firmware changed the frame format |
+| Rear text is garbled in a modified build | Packed gray4 bytes were decoded in the wrong nibble order. The low nibble is the left/even pixel. |
+| Local device becomes intermittent during screen viewing | Disable live refresh, wait a few seconds, then use Snapshot. Hidden tabs pause automatically; close any additional visible Mission Control windows. |
 | Storage 400 | Paths must match `^/ext(/[a-zA-Z0-9._-]*)*$` |
 | Install blocked | Low battery — plug in USB power (`is_allowed` in update status) |
 | Port in use | `PORT=9000 python app.py` |
@@ -149,9 +184,11 @@ tab for the grouped list, or the spec at `https://api.busy.app/busybar/docs`.
 ```
 busybar-web/
 ├── app.py                  # Flask proxy + composite helpers (~60 routes)
+├── tests/                  # proxy/error and live-screen regression tests
 └── static/
     ├── index.html          # 10-tab UI
     ├── app.js              # all frontend logic
     ├── style.css           # dark theme
+    ├── assets/             # local UI artwork (including front device shell)
     └── vendor/qrcode.min.js  # QR for Matter pairing
 ```
