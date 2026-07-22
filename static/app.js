@@ -436,6 +436,35 @@ $$(".btn.key").forEach((b) => b.addEventListener("click", async () => {
   toast(r.ok ? "key: " + b.dataset.key : JSON.stringify(r.data), r.ok ? "ok" : "err");
 }));
 
+async function sendRearInput(key) {
+  const r = await api("POST", "/input", { params: { key } });
+  toast(r.ok ? "rear control: " + key : JSON.stringify(r.data), r.ok ? "ok" : "err");
+  if (r.ok) setTimeout(() => refreshScreen(1), 180);
+  return r;
+}
+
+$("#rear-dial").addEventListener("click", () => sendRearInput("ok"));
+$("#rear-back").addEventListener("click", () => sendRearInput("back"));
+$("#rear-start").addEventListener("click", () => sendRearInput("start"));
+
+let rearDialWheelAt = 0;
+$("#rear-dial").addEventListener("wheel", (event) => {
+  event.preventDefault();
+  const now = Date.now();
+  if (now - rearDialWheelAt < 180) return;
+  rearDialWheelAt = now;
+  sendRearInput(event.deltaY < 0 ? "up" : "down");
+}, { passive: false });
+
+const rearModes = ["busy", "custom", "off", "apps", "settings"];
+let rearModeIndex = 0;
+$("#rear-mode").addEventListener("click", async () => {
+  rearModeIndex = (rearModeIndex + 1) % rearModes.length;
+  const mode = rearModes[rearModeIndex];
+  const r = await sendRearInput(mode);
+  if (r.ok) $("#rear-mode em").textContent = mode.toUpperCase();
+});
+
 // ---------------------------------------------------------------------------
 // timer
 // ---------------------------------------------------------------------------

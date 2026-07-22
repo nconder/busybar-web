@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BUSY Bar — Mission Control</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=20260722-rear-controls">
 <link rel="icon" href="data:,">
 </head>
 <body>
@@ -53,9 +53,17 @@
             <figcaption>Front display · live device view</figcaption>
           </figure>
           <figure class="rear-screen-figure">
-            <div class="rear-screen-label">Rear controls</div>
-            <canvas id="screen-back" width="160" height="80"></canvas>
-            <figcaption>Back display · 160×80 mono</figcaption>
+            <div class="busybar-rear-preview">
+              <button class="rear-scroll-dial" id="rear-dial" title="Click: OK · Scroll: up/down"><span>OK</span></button>
+              <button class="rear-back-button" id="rear-back" title="Back">↩</button>
+              <button class="rear-start-control" id="rear-start" title="Start / Pause">Start / Pause</button>
+              <button class="rear-mode-selector" id="rear-mode" title="Change mode"><span></span><em>BUSY</em></button>
+              <div class="rear-black-panel">
+                <canvas id="screen-back" width="160" height="80"></canvas>
+                <div class="rear-busy-logo" aria-hidden="true">▶BUSY</div>
+              </div>
+            </div>
+            <figcaption>Rear display · controls are live · scroll dial for up/down</figcaption>
           </figure>
         </div>
       </div>
@@ -858,6 +866,6 @@ POST /log_dump                 params: {"filename":"support"}</pre>
 </dialog>
 
 <script src="/static/vendor/qrcode.min.js"></script>
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=20260722-rear-controls"></script>
 </body>
 </html>
