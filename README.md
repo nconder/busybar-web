@@ -13,6 +13,18 @@ browser page — no cloud account UI required.
 
 ## Quick start
 
+**PowerShell (Windows):**
+
+```powershell
+cd busybar-web
+pip install flask requests
+$env:BUSY_API_TOKEN = "your-BAR-scope-token"
+python app.py
+# open http://127.0.0.1:8931
+```
+
+**Git Bash, Linux, or macOS:**
+
 ```bash
 cd busybar-web
 pip install flask requests
@@ -33,7 +45,18 @@ Requirements:
 
 The device serves the same API at `http://busybar.local/api` over Wi-Fi or its
 USB virtual LAN. First enable local HTTP API access on the device (Mission
-Control → **Connectivity → Local HTTP API access**, or the device web UI), then:
+Control → **Connectivity → Local HTTP API access**, or the device web UI), then.
+
+**PowerShell (Windows):**
+
+```powershell
+$env:BUSY_API_BASE = "http://busybar.local/api"
+# If local access mode is "key", also set its 4–10 digit key:
+$env:BUSY_API_TOKEN = "your-local-access-key"
+python app.py
+```
+
+**Git Bash, Linux, or macOS:**
 
 ```bash
 export BUSY_API_BASE="http://busybar.local/api"
@@ -68,7 +91,7 @@ framebuffers (see below).
 
 | Tab | What you can do | Endpoints used |
 |---|---|---|
-| 📊 Dashboard | Live mirrors of both displays (2 s refresh), power/device/system/network/timer/account cards | `screen`, `status/*`, `wifi/status`, `transport`, `busy/snapshot`, `account/*` |
+| 📊 Dashboard | Live mirrors of both displays (completion-based 5 s refresh), power/device/system/network/timer/account cards | `screen`, `status/*`, `wifi/status`, `transport`, `busy/snapshot`, `account/*` |
 | 🖥️ Display & Audio | Draw text/images/animations/countdowns/rectangles (presets + raw JSON), clear display, play/stop audio, volume, brightness, remote key presses | `display/draw`, `audio/play`, `audio/volume`, `display/brightness`, `input` |
 | ⏱️ BUSY Timer | Start Simple / Interval (Pomodoro) / Infinite sessions, pause/resume/stop, edit both timer profiles as JSON | `busy/snapshot`, `busy/profiles/{slot}` |
 | 🗄️ Storage & Assets | Browse `/ext`, download/upload/mkdir/rename/delete, upload app assets, wipe an app's assets | `storage/*`, `assets/upload` |
