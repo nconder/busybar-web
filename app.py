@@ -12,12 +12,15 @@ import os
 import time
 import uuid
 from functools import wraps
+from urllib.parse import urlparse
 
 import requests
 from flask import Flask, jsonify, request, Response, send_from_directory
 
-BASE = "https://api.busy.app/busybar"
-DEFAULT_TOKEN = "REDACTED_EXPOSED_TOKEN"
+CLOUD_BASE = "https://api.busy.app/busybar"
+# For direct USB/LAN operation, start with:
+#   BUSY_API_BASE=http://busybar.local/api python app.py
+BASE = os.environ.get("BUSY_API_BASE", CLOUD_BASE).rstrip("/")
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
@@ -26,8 +29,9 @@ app = Flask(__name__, static_folder="static", static_url_path="/static")
 # ---------------------------------------------------------------------------
 
 def get_token():
-    tok = request.headers.get("X-Busy-Token") or app.config.get("BUSY_TOKEN")
-    return tok or DEFAULT_TOKEN
+    return (request.headers.get("X-Busy-Token")
+            or app.config.get("BUSY_TOKEN")
+            or os.environ.get("BUSY_API_TOKEN"))
 
 @app.post("/api/token")
 def set_token():
@@ -43,7 +47,8 @@ def token_status():
     tok = get_token()
     return jsonify({
         "configured": bool(tok),
-        "using_default": tok == DEFAULT_TOKEN,
+        "using_default": False,
+        "backend": BASE,
         "hint": (tok[:6] + "…" + tok[-4:]) if tok else None,
     })
 
@@ -53,7 +58,10 @@ def token_status():
 
 def upstream(method, path, params=None, json_body=None, data=None,
              headers=None, timeout=30):
-    h = {"Authorization": f"Bearer {get_token()}"}
+    h = {}
+    token = get_token()
+    if token:
+        h["Authorization"] = f"Bearer {token}"
     if headers:
         h.update(headers)
     url = f"{BASE}{path}"
@@ -63,6 +71,22 @@ def upstream(method, path, params=None, json_body=None, data=None,
 def passthrough(r):
     """Return upstream response to the browser, preserving content type."""
     ct = r.headers.get("Content-Type", "application/json")
+    if r.status_code >= 500 and "text/html" in ct.lower():
+        path = urlparse(r.url).path
+        if path.startswith("/busybar"):
+            path = path[len("/busybar"):] or "/"
+        if r.status_code == 504:
+            message = "BUSY API gateway time-out"
+        else:
+            message = "BUSY API upstream error"
+        return jsonify({
+            "result": "ERROR",
+            "error": message,
+            "upstream_status": r.status_code,
+            "upstream_path": path,
+            "retryable": r.status_code in (502, 503, 504),
+            "cloudflare_ray_id": r.headers.get("CF-Ray"),
+        }), r.status_code
     return Response(r.content, status=r.status_code, content_type=ct)
 
 def api(fn):
@@ -188,7 +212,10 @@ def busy_start():
                              "trigger_smart_home": True})
     now_ms = int(time.time() * 1000)
 
-    prof = upstream("GET", f"/busy/profiles/{slot}").json()
+    prof_response = upstream("GET", f"/busy/profiles/{slot}")
+    if prof_response.status_code != 200:
+        return passthrough(prof_response)
+    prof = prof_response.json()
     prof["timer_settings"] = timer_settings
     prof["busy_bar_settings"] = bar_settings
     prof["profile_timestamp_ms"] = now_ms
@@ -232,7 +259,10 @@ def _busy_pause_toggle(paused):
     it back can bounce the type to INFINITE (or kill it). So instead of a
     read-modify-write, we PUT only the minimal fields — the firmware merges
     them into the current snapshot server-side."""
-    cur = upstream("GET", "/busy/snapshot").json()
+    cur_response = upstream("GET", "/busy/snapshot")
+    if cur_response.status_code != 200:
+        return passthrough(cur_response)
+    cur = cur_response.json()
     snap = cur.get("snapshot", {})
     if snap.get("type") == "NOT_STARTED":
         return jsonify({"result": "ERROR", "error": "timer not started"}), 400
@@ -253,7 +283,10 @@ def _busy_pause_toggle(paused):
 @app.post("/api/busy/stop")
 @api
 def busy_stop():
-    cur = upstream("GET", "/busy/snapshot").json()
+    cur_response = upstream("GET", "/busy/snapshot")
+    if cur_response.status_code != 200:
+        return passthrough(cur_response)
+    cur = cur_response.json()
     settings = cur.get("snapshot", {}).get(
         "busy_bar_settings",
         {"theme": "busy", "show_work_phase_only": False, "trigger_smart_home": True})

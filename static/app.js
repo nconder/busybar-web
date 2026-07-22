@@ -159,18 +159,29 @@ async function renderScreen(canvasId, display) {
 }
 
 let screenTimer = null;
+let screenLoopGeneration = 0;
 function startScreenLoop() {
   stopScreenLoop();
-  const tick = () => {
+  const generation = screenLoopGeneration;
+  const tick = async () => {
     if ($("#live-screen-toggle").checked && $("#tab-dashboard").classList.contains("active")) {
-      renderScreen("#screen-front", 0);
-      renderScreen("#screen-back", 1);
+      // Wait for both cloud/device calls before scheduling another pair.  The
+      // old setInterval(2000) piled up overlapping requests whenever BUSY's
+      // origin slowed down, which increased the chance of Cloudflare 504s.
+      await Promise.allSettled([
+        renderScreen("#screen-front", 0),
+        renderScreen("#screen-back", 1),
+      ]);
     }
+    if (generation === screenLoopGeneration) screenTimer = setTimeout(tick, 5000);
   };
   tick();
-  screenTimer = setInterval(tick, 2000);
 }
-function stopScreenLoop() { if (screenTimer) clearInterval(screenTimer); }
+function stopScreenLoop() {
+  screenLoopGeneration++;
+  if (screenTimer) clearTimeout(screenTimer);
+  screenTimer = null;
+}
 $("#refresh-screens").addEventListener("click", () => {
   renderScreen("#screen-front", 0); renderScreen("#screen-back", 1);
 });

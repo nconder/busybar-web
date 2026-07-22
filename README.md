@@ -16,6 +16,7 @@ browser page — no cloud account UI required.
 ```bash
 cd busybar-web
 pip install flask requests
+export BUSY_API_TOKEN="your-BAR-scope-token"
 python app.py
 # open http://127.0.0.1:8931
 ```
@@ -24,10 +25,27 @@ Requirements:
 
 - Python 3.10+ (`flask`, `requests`)
 - A BUSY Bar linked to your BUSY account, powered on, online via USB or Wi-Fi
-- A **BAR-scope API token** (BUSY app → *Settings → Development → API tokens*).
-  A token is pre-seeded in `app.py` (`DEFAULT_TOKEN`); change it at runtime via
-  the **🔑 Token** button in the top bar — it is held only in the local proxy
-  process and never sent to the browser.
+- A **BAR-scope API token** for cloud mode (BUSY app → *Settings → Development
+  → API tokens*). Set `BUSY_API_TOKEN` before launch or use the **🔑 Token**
+  button. No credential is shipped in the repository.
+
+### Direct local mode (no BUSY cloud or internet required)
+
+The device serves the same API at `http://busybar.local/api` over Wi-Fi or its
+USB virtual LAN. First enable local HTTP API access on the device (Mission
+Control → **Connectivity → Local HTTP API access**, or the device web UI), then:
+
+```bash
+export BUSY_API_BASE="http://busybar.local/api"
+# If local access mode is "key", also set its 4–10 digit key:
+export BUSY_API_TOKEN="your-local-access-key"
+python app.py
+```
+
+Local mode controls the device without Cloudflare and continues working when
+the internet is down. Cloud account/MQTT status and downloading OTA firmware
+may still require external services. If mDNS is unavailable, replace
+`busybar.local` with the device's LAN or USB-interface IP address.
 
 ## Architecture
 
@@ -36,9 +54,9 @@ Browser (static/index.html + app.js)
         │  fetch /api/…            (no CORS, no token in page)
         ▼
 Flask proxy (app.py, 127.0.0.1:8931)
-        │  Authorization: Bearer <token>
-        ▼
-https://api.busy.app/busybar  →  your BUSY Bar
+        │
+        ├── cloud: https://api.busy.app/busybar (Bearer token)
+        └── local: http://busybar.local/api (direct USB/LAN)
 ```
 
 Every UI action maps 1:1 onto a documented cloud endpoint. The proxy also adds
@@ -92,11 +110,14 @@ tab for the grouped list, or the spec at `https://api.busy.app/busybar/docs`.
 | Storage 400 | Paths must match `^/ext(/[a-zA-Z0-9._-]*)*$` |
 | Install blocked | Low battery — plug in USB power (`is_allowed` in update status) |
 | Port in use | `PORT=9000 python app.py` |
+| `504 Gateway time-out` / Cloudflare HTML | BUSY's cloud origin did not answer in time. Retry later or run direct local mode. The proxy now reports the endpoint and Cloudflare Ray ID as compact JSON. |
 
 ## Security notes
 
 - The token grants **full device control** (firmware flash, file erase, fabric
   erase). Keep it out of version control; rotate if leaked.
+- Set secrets with `BUSY_API_TOKEN` or the runtime Token dialog; never hardcode
+  them in `app.py`.
 - The proxy binds to localhost only and has no auth of its own — don't expose
   the port.
 

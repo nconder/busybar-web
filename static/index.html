@@ -507,10 +507,10 @@ python app.py
             <li>A BAR-scope API token (see <a href="#help-token">API token</a>)</li>
           </ul>
           <h3>How it works</h3>
-          <p>The browser never talks to the cloud directly. A tiny Flask proxy (<code>app.py</code>) holds your
-          token, forwards each request to <code>api.busy.app</code>, and returns the response — this avoids CORS
-          problems and keeps the token out of the page source. Every tab calls local <code>/api/…</code> routes
-          that map 1:1 onto the documented cloud endpoints.</p>
+          <p>The browser talks to a tiny Flask proxy (<code>app.py</code>). By default the proxy uses
+          <code>api.busy.app</code>; set <code>BUSY_API_BASE=http://busybar.local/api</code> before launch to
+          communicate directly over USB/LAN without Cloudflare or internet. Every tab calls local
+          <code>/api/…</code> routes that map 1:1 onto the device API.</p>
           <p class="muted">The green pill in the top bar shows the live cloud API version when the device is
           reachable; it turns red if the device or token is unreachable.</p>
         </div>
@@ -526,11 +526,11 @@ python app.py
           </ol>
           <h3>How Mission Control uses it</h3>
           <ul>
-            <li>A token is pre-configured in <code>app.py</code> (<code>DEFAULT_TOKEN</code>) so the app works out of the box.</li>
+            <li>No token is shipped in the source. Set <code>BUSY_API_TOKEN</code> before launch or use this dialog.</li>
             <li>Click <strong>🔑 Token</strong> in the top bar to paste a different token at runtime — it is stored
             only in the local proxy process memory, never written to disk or sent anywhere except
             <code>api.busy.app</code>.</li>
-            <li>The dialog shows whether you're using the default or a custom token, plus a masked hint.</li>
+            <li>The dialog shows whether a token is configured, plus a masked hint.</li>
           </ul>
           <h3>Security notes</h3>
           <ul>
@@ -547,7 +547,8 @@ python app.py
           <h3>Live Screens</h3>
           <ul>
             <li><strong>Front (72×16, color)</strong> and <strong>Back (160×80, mono)</strong> canvases mirror what the
-            physical displays currently show, refreshed every 2&nbsp;s while "live refresh" is ticked.</li>
+            physical displays currently show. Each pair finishes before another is scheduled, with a 5&nbsp;s delay,
+            preventing overlapping requests during cloud slowdowns.</li>
             <li><strong>↻ Snapshot</strong> grabs a single frame on demand.</li>
             <li>Frames are fetched via <code>GET /busybar/screen</code> and decoded in the browser — see
             <a href="#help-screens">Screen format</a>.</li>
