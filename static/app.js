@@ -106,6 +106,45 @@ async function ping() {
 // Front display: RGB888, 72×16 (3456 bytes).
 // Back display: packed 4-bit grayscale, 2 px/byte, 80 bytes/row (160 px wide).
 // ---------------------------------------------------------------------------
+function fillRoundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawFrontLedMatrix(canvas, buf, width, height) {
+  // The built-in 10.0.4.20 UI renders every source pixel as a rounded 10×10
+  // LED lens: bright rim, slightly dimmer center, and transparent corners.
+  const ledSize = 10;
+  canvas.width = width * ledSize;
+  canvas.height = height * ledSize;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const source = (y * width + x) * 3;
+      const r = buf[source], g = buf[source + 1], b = buf[source + 2];
+      const px = x * ledSize, py = y * ledSize;
+
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      fillRoundedRect(ctx, px + 1, py, 8, 10, 2);
+
+      ctx.fillStyle = `rgb(${Math.round(r * .72)},${Math.round(g * .72)},${Math.round(b * .72)})`;
+      fillRoundedRect(ctx, px + 2, py + 1, 6, 8, 1);
+    }
+  }
+}
+
 async function renderScreen(canvasId, display) {
   const canvas = $(canvasId);
   try {
@@ -119,14 +158,8 @@ async function renderScreen(canvasId, display) {
 
     let img;
     if (fmt === "rgb888" && w && h) {
-      img = new Uint8ClampedArray(w * h * 4);
-      for (let i = 0; i < w * h; i++) {
-        img[i * 4] = buf[i * 3];
-        img[i * 4 + 1] = buf[i * 3 + 1];
-        img[i * 4 + 2] = buf[i * 3 + 2];
-        img[i * 4 + 3] = 255;
-      }
-      canvas.width = w; canvas.height = h;
+      drawFrontLedMatrix(canvas, buf, w, h);
+      return;
     } else if (fmt === "gray4" && w && h) {
       img = new Uint8ClampedArray(w * h * 4);
       for (let row = 0; row < h; row++) {
@@ -153,8 +186,9 @@ async function renderScreen(canvasId, display) {
   } catch (e) {
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#111"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#f85149"; ctx.font = "8px monospace";
-    ctx.fillText("no signal", 2, 9);
+    const scale = canvas.width >= 700 ? 10 : 1;
+    ctx.fillStyle = "#f85149"; ctx.font = `${8 * scale}px monospace`;
+    ctx.fillText("no signal", 2 * scale, 9 * scale);
   }
 }
 

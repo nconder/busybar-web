@@ -115,7 +115,10 @@ input[type="range"] { accent-color: var(--accent); }
 .btn.key { min-width: 64px; }
 
 /* screens */
-.screens { display: flex; gap: 30px; justify-content: center; padding: 8px 0 4px; }
+.screens {
+  display: flex; gap: 42px; justify-content: center; align-items: center;
+  flex-wrap: wrap; padding: 8px 0 4px;
+}
 .screens figure { margin: 0; text-align: center; }
 .screens figcaption { color: var(--muted); font-size: 12px; margin-top: 6px; }
 .screens canvas {
@@ -124,6 +127,40 @@ input[type="range"] { accent-color: var(--accent); }
 }
 #screen-front { width: 504px; height: 112px; }
 #screen-back { width: 320px; height: 160px; }
+
+/* Match the device's built-in UI at http://10.0.4.20.  Its transparent
+   768×248 shell is displayed at 385×124, with the 72×16 canvas scaled to
+   360×80 and inset 12×31 pixels into the front bezel. */
+.busybar-device-preview {
+  position: relative; width: 385px; height: 124px; margin: 0 auto;
+}
+.busybar-device-preview img {
+  position: absolute; inset: 0; z-index: 1; width: 385px; height: 124px;
+  display: block; pointer-events: none; user-select: none;
+}
+.busybar-device-preview #screen-front {
+  position: absolute; z-index: 2; left: 12px; top: 31px;
+  width: 360px; height: 80px; border: 0; border-radius: 2px;
+  background: transparent;
+}
+.front-screen-figure figcaption { margin-top: 9px; }
+.rear-screen-figure {
+  padding: 10px 12px 8px; border: 1px solid var(--border);
+  border-radius: 10px; background: #0a0d11;
+}
+.rear-screen-label {
+  color: var(--muted); font-size: 11px; letter-spacing: .08em;
+  text-align: left; text-transform: uppercase; margin: 0 0 7px 2px;
+}
+
+@media (max-width: 520px) {
+  .busybar-device-preview { width: 310px; height: 100px; }
+  .busybar-device-preview img { width: 310px; height: 100px; }
+  .busybar-device-preview #screen-front {
+    left: 11px; top: 25px; width: 288px; height: 64px;
+  }
+  #screen-back { width: 288px; height: 144px; }
+}
 
 /* remote pad */
 .pad { display: grid; grid-template-columns: repeat(3, auto); gap: 6px; justify-content: center; margin: 10px 0; }

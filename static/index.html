@@ -45,8 +45,18 @@
           </div>
         </div>
         <div class="screens">
-          <figure><canvas id="screen-front" width="72" height="16"></canvas><figcaption>Front (72×16)</figcaption></figure>
-          <figure><canvas id="screen-back" width="160" height="80"></canvas><figcaption>Back (160×80, mono)</figcaption></figure>
+          <figure class="front-screen-figure">
+            <div class="busybar-device-preview">
+              <img src="/static/assets/busybar-device.png" alt="" draggable="false">
+              <canvas id="screen-front" width="720" height="160"></canvas>
+            </div>
+            <figcaption>Front display · live device view</figcaption>
+          </figure>
+          <figure class="rear-screen-figure">
+            <div class="rear-screen-label">Rear controls</div>
+            <canvas id="screen-back" width="160" height="80"></canvas>
+            <figcaption>Back display · 160×80 mono</figcaption>
+          </figure>
         </div>
       </div>
 
